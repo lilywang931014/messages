@@ -8,7 +8,11 @@ const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const FacebookStrategy = require("passport-facebook").Strategy;
+const GitHubStrategy = require("passport-github2").Strategy;
 const findOrCreate = require("mongoose-findorcreate");
+
+
 
 
 const app = express();
@@ -70,6 +74,33 @@ function(accessToken, refreshToken, profile, cb) {
 }
 ));
 
+passport.use(new FacebookStrategy({
+  clientID: process.env.FACEBOOK_APP_ID,
+  clientSecret: process.env.FACEBOOK_APP_SECRET,
+  callbackURL: "http://localhost:3000/auth/facebook/message"
+},
+
+function(accessToken, refreshToken, profile, cb){
+  User.findOrCreate({
+    facebookId: profile.id
+  }, function(err, user){
+    return cb(err, user);
+  });
+})
+);
+
+passport.use(new GitHubStrategy({
+  clientID: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  callbackURL: "http://localhost:3000/auth/github/message"
+},
+function(accessToken, refreshToken, profile, done) {
+    User.findOrCreate({ githubId: profile.id }, function (err, user) {
+      return done(err, user);
+    });
+  }
+));
+
 app.get("/",function(req,res){
 
   res.render("home");
@@ -80,6 +111,19 @@ app.get("/auth/google", passport.authenticate("google", {scope:["profile"]}));
 
 app.get("/auth/google/message", passport.authenticate("google", {failureRedirect: "/login"}),function(req,res){
 
+  res.redirect("/");
+});
+
+app.get("/auth/github", passport.authenticate("github", {scope:['user:email']}));
+
+app.get("/auth/github/message", passport.authenticate("github", {failureRedirect: "/login"}),function(req,res){
+  res.redirect("/");
+});
+
+app.get("/auth/facebook",
+  passport.authenticate('facebook'));
+
+app.get("/auth/facebook/message", passport.authenticate("facebook", {failureRedirect: "/login"}),function(req,res){
   res.redirect("/");
 });
 
